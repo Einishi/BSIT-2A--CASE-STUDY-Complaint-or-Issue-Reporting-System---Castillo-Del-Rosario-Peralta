@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Complaint or Issue Reporting System</title>
+<style>
+  body { font-family: Arial, sans-serif; background: #f4f4f4; margin: 0; padding: 0; }
+  .container { max-width: 900px; margin: 30px auto; background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 0 8px rgba(0,0,0,0.2); }
+  h2 { text-align: center; color: #333; }
+  label { display: block; margin-top: 10px; }
+  input, select, textarea { width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box; }
+  button { margin-top: 10px; padding: 8px 12px; cursor: pointer; border: none; border-radius: 5px; background-color: #007BFF; color: white; }
+  button:hover { background-color: #0056b3; }
+  table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+  th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+  th { background-color: #007BFF; color: white; }
+  .hidden { display: none; }
+  .logout { background-color: #dc3545; }
+  .logout:hover { background-color: #b02a37; }
+  textarea { resize: vertical; }
+</style>
+</head>
+<body>
+
+<div class="container" id="loginDiv">
+  <h2>Login</h2>
+  <label>Username:</label>
+  <input type="text" id="loginUser" placeholder="Enter username">
+  <label>Password:</label>
+  <input type="password" id="loginPass" placeholder="Enter password">
+  <label>Role:</label>
+  <select id="role">
+    <option value="student">Student / Employee</option>
+    <option value="admin">Admin / IT</option>
+  </select>
+  <button onclick="login()">Login</button>
+</div>
+
+<div class="container hidden" id="studentDiv">
+  <h2>Student / Employee Complaint Form</h2>
+  <label>Reference Number:</label>
+  <input type="text" id="refNumber" readonly>
+
+  <label>Name:</label>
+  <input type="text" id="name">
+
+  <label>Student Number:</label>
+  <input type="text" id="studentNumber">
+
+  <label>Subject:</label>
+  <input type="text" id="subject">
+
+  <label>Complaint or Issue:</label>
+  <textarea id="issue" rows="3"></textarea>
+
+  <button onclick="saveComplaint()">Submit Complaint</button>
+  <button class="logout" onclick="logout()">Logout</button>
+
+  <h3>Your Complaints</h3>
+  <input type="text" id="searchStudent" placeholder="Search by Reference Number" onkeyup="searchComplaintStudent()">
+  <table id="studentTable">
+    <thead>
+      <tr>
+        <th>Reference #</th><th>Name</th><th>Student #</th><th>Subject</th><th>Issue</th><th>Status</th><th>Remarks</th><th>Action</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<div class="container hidden" id="adminDiv">
+  <h2>Admin / IT Dashboard</h2>
+  <button class="logout" onclick="logout()">Logout</button>
+
+  <label>Filter by Category (Subject):</label>
+  <input type="text" id="filterCategory" placeholder="Type to filter..." onkeyup="filterComplaints()">
+
+  <label>Filter by Urgency (Keyword):</label>
+  <input type="text" id="filterUrgency" placeholder="Type to filter..." onkeyup="filterComplaints()">
+
+  <table id="adminTable">
+    <thead>
+      <tr>
+        <th>Reference #</th><th>Name</th><th>Student #</th><th>Subject</th><th>Issue</th><th>Status</th><th>Remarks</th><th>Action</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<script>
+let reports = [];
+let editIndex = -1;
+
+function generateRefNumber() {
+  document.getElementById("refNumber").value = "REF-" + Math.floor(100000 + Math.random() * 900000);
+}
+generateRefNumber();
+
+function login() {
+  const user = document.getElementById("loginUser").value.trim();
+  const pass = document.getElementById("loginPass").value.trim();
+  const role = document.getElementById("role").value;
+
+  if (!user || !pass) {
+    alert("Please enter both username and password.");
+    return;
+  }
+
+  document.getElementById("loginDiv").classList.add("hidden");
+
+  if (role === "student") {
+    document.getElementById("studentDiv").classList.remove("hidden");
+  } else {
+    document.getElementById("adminDiv").classList.remove("hidden");
+  }
+}
+
+function logout() {
+  document.getElementById("loginDiv").classList.remove("hidden");
+  document.getElementById("studentDiv").classList.add("hidden");
+  document.getElementById("adminDiv").classList.add("hidden");
+}
+
+function saveComplaint() {
+  const refNumber = document.getElementById("refNumber").value;
+  const name = document.getElementById("name").value.trim();
+  const studentNumber = document.getElementById("studentNumber").value.trim();
+  const subject = document.getElementById("subject").value.trim();
+  const issue = document.getElementById("issue").value.trim();
+
+  if (!name || !studentNumber || !subject || !issue) {
+    alert("Please fill out all fields.");
+    return;
+  }
+
+  if (editIndex === -1) {
+    reports.push({ refNumber, name, studentNumber, subject, issue, status: "Pending", remarks: "" });
+    alert("Complaint submitted successfully!");
+  } else {
+    reports[editIndex].name = name;
+    reports[editIndex].studentNumber = studentNumber;
+    reports[editIndex].subject = subject;
+    reports[editIndex].issue = issue;
+    alert("Complaint updated successfully!");
+    editIndex = -1;
+  }
+
+  displayComplaints();
+  clearForm();
+  generateRefNumber();
+}
+
+function displayComplaints() {
+  const studentTable = document.querySelector("#studentTable tbody");
+  const adminTable = document.querySelector("#adminTable tbody");
+  studentTable.innerHTML = "";
+  adminTable.innerHTML = "";
+
+  reports.forEach((r, index) => {
+    const rowS = `<tr>
+      <td>${r.refNumber}</td><td>${r.name}</td><td>${r.studentNumber}</td><td>${r.subject}</td>
+      <td>${r.issue}</td><td>${r.status}</td><td>${r.remarks || ""}</td>
+      <td><button onclick="editComplaint(${index})">Edit</button> <button onclick="deleteComplaint(${index})">Delete</button></td>
+    </tr>`;
+    studentTable.innerHTML += rowS;
+
+    const rowA = `<tr>
+      <td>${r.refNumber}</td><td>${r.name}</td><td>${r.studentNumber}</td><td>${r.subject}</td>
+      <td>${r.issue}</td>
+      <td><select onchange="updateStatus(${index}, this.value)">
+        <option ${r.status==="Pending"?"selected":""}>Pending</option>
+        <option ${r.status==="In Progress"?"selected":""}>In Progress</option>
+        <option ${r.status==="Resolved"?"selected":""}>Resolved</option>
+      </select></td>
+      <td>
+        <textarea rows="2" oninput="updateRemarks(${index}, this.value)" 
+                  onblur="refreshAfterRemarks()">${r.remarks || ""}</textarea>
+      </td>
+      <td><button onclick="deleteComplaint(${index})">Delete</button></td>
+    </tr>`;
+    adminTable.innerHTML += rowA;
+  });
+}
+
+function clearForm() {
+  document.getElementById("name").value = "";
+  document.getElementById("studentNumber").value = "";
+  document.getElementById("subject").value = "";
+  document.getElementById("issue").value = "";
+}
+
+function editComplaint(index) {
+  const r = reports[index];
+  document.getElementById("refNumber").value = r.refNumber;
+  document.getElementById("name").value = r.name;
+  document.getElementById("studentNumber").value = r.studentNumber;
+  document.getElementById("subject").value = r.subject;
+  document.getElementById("issue").value = r.issue;
+  editIndex = index;
+}
+
+function deleteComplaint(index) {
+  if (confirm("Are you sure you want to delete this complaint?")) {
+    reports.splice(index, 1);
+    displayComplaints();
+  }
+}
+
+function updateStatus(index, value) {
+  reports[index].status = value;
+  displayComplaints();
+}
+
+function updateRemarks(index, value) {
+  reports[index].remarks = value;
+ 
+}
+
+function refreshAfterRemarks() {
+  displayComplaints(); 
+}
+
+function searchComplaintStudent() {
+  const search = document.getElementById("searchStudent").value.toLowerCase();
+  const rows = document.querySelectorAll("#studentTable tbody tr");
+  rows.forEach(row => {
+    row.style.display = row.cells[0].textContent.toLowerCase().includes(search) ? "" : "none";
+  });
+}
+
+function filterComplaints() {
+  const cat = document.getElementById("filterCategory").value.toLowerCase();
+  const urg = document.getElementById("filterUrgency").value.toLowerCase();
+  const rows = document.querySelectorAll("#adminTable tbody tr");
+
+  rows.forEach(row => {
+    const subject = row.cells[3].textContent.toLowerCase();
+    const issue = row.cells[4].textContent.toLowerCase();
+    row.style.display = subject.includes(cat) && issue.includes(urg) ? "" : "none";
+  });
+}
+</script>
+
+</body>
+</html>
